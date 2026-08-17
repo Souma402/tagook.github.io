@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tagook（タグック</title>
+  <title>Tagook（タグック）</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; color: #333; }
@@ -66,6 +66,15 @@
       transform: scale(1.3);
       cursor: pointer;
     }
+    
+    /* 自分のタグ表示エリア */
+    #current-tags-container {
+      margin-top: 15px;
+      padding: 10px;
+      background: #fafafa;
+      border-radius: 6px;
+      border: 1px solid #eee;
+    }
   </style>
 </head>
 <body>
@@ -118,7 +127,7 @@
           2. 他のユーザー、当方、または第三者の著作権、プライバシー権、名誉等の権利を侵害する行為<br>
           3. 誹謗中傷、ハラスメント、差別的発言、不快感を与えるメッセージの送信<br>
           4. 猥褻（わいせつ）な画像、テキスト等の投稿および送受信<br>
-          5. 商業目的の宣伝、スパムメッセージの無差別送信、勧誘行為、詐欺行為、なりすなり行為<br>
+          5. 商業目的の宣伝、スパムメッセージの無差別送信、勧誘行為、詐欺行為、なりすまし行為<br>
           6. サーバーやネットワークへ過度な負荷をかける行為、および不正アクセス行為<br>
           7. その他、当方が不適切と判断する行為</p>
 
@@ -156,6 +165,9 @@
       <h2>マイタグを設定する</h2>
       <input type="text" id="tags" placeholder="例: 映画, カフェ巡り, Python">
       <button class="btn-secondary" id="btn-update-tags">タグを保存する</button>
+      
+      <!-- 自分の現在のタグを表示するエリア -->
+      <div id="current-tags-container"></div>
     </section>
 
     <section>
@@ -198,6 +210,33 @@
       return `${encodeURIComponent(username.trim().toLowerCase())}@tagook.local`;
     }
 
+    // --- マイタグを読み込んで画面に表示する関数 ---
+    async function loadMyTags() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('tags')
+        .eq('id', user.id)
+        .single();
+
+      const container = document.getElementById('current-tags-container');
+      const tagsInput = document.getElementById('tags');
+
+      if (data && data.tags && data.tags.length > 0) {
+        // カンマ区切りの文字列にして入力欄にセット
+        tagsInput.value = data.tags.join(', ');
+        
+        // タグのHTMLを生成して表示
+        const tagsHtml = data.tags.map(t => `<span class="tag">#${t}</span>`).join(' ');
+        container.innerHTML = `<span style="font-size: 0.9em; color: #666; font-weight: bold;">現在のマイタグ:</span><br>${tagsHtml}`;
+      } else {
+        tagsInput.value = '';
+        container.innerHTML = '<span style="font-size: 0.9em; color: #888;">まだタグが設定されていません。</span>';
+      }
+    }
+
     // --- タブ切り替え処理 ---
     document.getElementById('tab-login').addEventListener('click', () => {
       document.getElementById('tab-login').classList.add('active');
@@ -226,6 +265,8 @@
               if (data) {
                 document.getElementById('welcome-message').textContent = `ようこそ、${data.name}さん！`;
               }
+              // ログイン成功時に自分のタグを読み込む
+              await loadMyTags();
             } catch(e) {
               console.error(e);
             }
@@ -268,7 +309,6 @@
       showMessage('アカウントを作成中...', false);
 
       try {
-        // ユーザー名の重複チェック
         const { data: existingUser, error: checkError } = await supabaseClient
           .from('profiles')
           .select('name')
@@ -285,7 +325,6 @@
           return;
         }
 
-        // 内部用のダミーメールアドレスで登録
         const dummyEmail = makeDummyEmail(username);
 
         const { data, error } = await supabaseClient.auth.signUp({
@@ -300,7 +339,6 @@
           showMessage('エラー: ' + error.message, true);
         } else {
           showMessage('アカウントを作成しました！', false);
-          // メール認証OFFなら即座にログイン完了となり、画面が自動切替されます
         }
       } catch (err) {
         showMessage('予期せぬエラーが発生しました: ' + err.message, true);
@@ -368,10 +406,12 @@
         alert('保存エラー: ' + error.message);
       } else {
         alert('タグを保存しました！');
+        // 保存後、画面のタグ表示をすぐに更新する
+        await loadMyTags();
       }
     });
 
-    // --- タグ検索 ---
+    // --- タグ検索（完全シャッフル版） ---
     document.getElementById('btn-search').addEventListener('click', async () => {
       const resultsDiv = document.getElementById('results');
       if(!supabaseClient) {
@@ -397,6 +437,12 @@
       if (!data || data.length === 0) {
         resultsDiv.innerHTML = '該当するユーザーが見つかりませんでした。';
         return;
+      }
+
+      // ★追加: 取得したデータをJavaScript側でも確実にシャッフル（Fisher-Yatesアルゴリズム）
+      for (let i = data.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [data[i], data[j]] = [data[j], data[i]];
       }
 
       resultsDiv.innerHTML = '';
