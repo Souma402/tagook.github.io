@@ -3,16 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tagook（タグック</title>
+  <title>Tagook（タグック）</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; color: #333; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; color: #333; transition: max-width 0.3s;}
     header { text-align: center; margin-bottom: 20px; }
     h1 { color: #ff5a5f; font-size: 2.2rem; margin-bottom: 5px; }
     p.subtitle { color: #666; font-size: 0.9rem; margin-top: 0; }
     section { background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     h2 { font-size: 1.2rem; margin-top: 0; color: #444; margin-bottom: 15px;}
-    input[type="text"], input[type="password"], textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+    
+    /* ★入力時の自動ズームを防止するため、font-sizeを16pxに設定 */
+    input[type="text"], input[type="password"], textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 16px; }
+    
     button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; transition: background-color 0.3s; }
     
     .btn-primary { background-color: #ff5a5f; color: white; }
@@ -64,6 +67,34 @@
     .dm-info { flex-grow: 1; }
     .dm-name { font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 3px; }
     .dm-tags { font-size: 0.8rem; color: #888; }
+
+    /* ★ PC向けレスポンシブデザイン（2カラムレイアウト） */
+    @media (min-width: 768px) {
+      body {
+        max-width: 1000px; /* パソコンでは横幅を広げる */
+      }
+      #app-container {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+      }
+      #main-screen {
+        width: 400px;
+        flex-shrink: 0;
+        /* トークを開いても、PCでは左側を隠さず常に表示する */
+        display: block !important;
+      }
+      #chat-screen {
+        flex-grow: 1;
+        width: 100%;
+      }
+      .chat-messages {
+        height: 600px; /* パソコンではチャット画面を少し縦長に */
+      }
+      #btn-back-to-main {
+        display: none !important; /* パソコンでは戻るボタンを隠す */
+      }
+    }
   </style>
 </head>
 <body>
@@ -106,72 +137,74 @@
   </div>
 
   <!-- ===============================
-       メイン画面 (タブ付き)
+       ログイン後の全体コンテナ
   ================================ -->
-  <div id="main-screen" class="hidden">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span id="welcome-message" style="font-weight: bold; color: #444;"></span>
-      <button class="btn-logout" style="width: auto; margin: 0;" id="btn-logout">ログアウト</button>
+  <div id="app-container" class="hidden">
+    
+    <!-- メイン画面 (左カラム用) -->
+    <div id="main-screen">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span id="welcome-message" style="font-weight: bold; color: #444;"></span>
+        <button class="btn-logout" style="width: auto; margin: 0;" id="btn-logout">ログアウト</button>
+      </div>
+
+      <!-- 画面切り替えタブ -->
+      <div class="main-tabs">
+        <div id="tab-matching" class="main-tab active">マッチング</div>
+        <div id="tab-dm" class="main-tab">DM</div>
+      </div>
+
+      <!-- マッチング画面 -->
+      <div id="view-matching">
+        <section>
+          <h2>タグでさがす</h2>
+          <input type="text" id="searchTag" placeholder="検索したいタグ（例: 映画）">
+          <button class="btn-primary" id="btn-search">シャッフル検索</button>
+          <div id="results" style="margin-top: 15px;"></div>
+        </section>
+
+        <section>
+          <h2>マイタグ</h2>
+          <div id="current-tags-container"></div>
+          <input type="text" id="tags" placeholder="追加したいタグ（例: カフェ）">
+          <button class="btn-secondary" id="btn-update-tags">タグを追加する</button>
+        </section>
+
+        <section>
+          <h2>私について (プロフィール)</h2>
+          <textarea id="my-bio" placeholder="趣味や自己紹介などを入力してください" rows="3"></textarea>
+          <button class="btn-secondary" id="btn-update-bio">「私について」を保存する</button>
+        </section>
+      </div>
+
+      <!-- DM画面（トーク履歴一覧） -->
+      <div id="view-dm" class="hidden">
+        <section style="padding: 10px; background: transparent; border: none; box-shadow: none;">
+          <h2 style="padding-left: 5px;">メッセージ一覧</h2>
+          <div id="dm-list-container">
+            <!-- DM相手の一覧がここに表示されます -->
+          </div>
+        </section>
+      </div>
     </div>
 
-    <!-- 画面切り替えタブ -->
-    <div class="main-tabs">
-      <div id="tab-matching" class="main-tab active">マッチング</div>
-      <div id="tab-dm" class="main-tab">DM</div>
-    </div>
-
-    <!-- ★ マッチング画面 ★ -->
-    <div id="view-matching">
+    <!-- トーク（チャット）画面 (右カラム用) -->
+    <div id="chat-screen" class="hidden">
       <section>
-        <h2>タグでさがす</h2>
-        <input type="text" id="searchTag" placeholder="検索したいタグ（例: 映画）">
-        <button class="btn-primary" id="btn-search">シャッフル検索</button>
-        <div id="results" style="margin-top: 15px;"></div>
-      </section>
-
-      <section>
-        <h2>マイタグ</h2>
-        <div id="current-tags-container"></div>
-        <input type="text" id="tags" placeholder="追加したいタグ（例: カフェ）">
-        <button class="btn-secondary" id="btn-update-tags">タグを追加する</button>
-      </section>
-
-      <section>
-        <h2>私について (プロフィール)</h2>
-        <textarea id="my-bio" placeholder="趣味や自己紹介などを入力してください" rows="3"></textarea>
-        <button class="btn-secondary" id="btn-update-bio">「私について」を保存する</button>
-      </section>
-    </div>
-
-    <!-- ★ DM画面（トーク履歴一覧） ★ -->
-    <div id="view-dm" class="hidden">
-      <section style="padding: 10px; background: transparent; border: none; box-shadow: none;">
-        <h2 style="padding-left: 5px;">メッセージ一覧</h2>
-        <div id="dm-list-container">
-          <!-- DM相手の一覧がここに表示されます -->
+        <div class="chat-header">
+          <button id="btn-back-to-main" class="btn-secondary" style="width: auto; padding: 6px 12px; margin: 0;">&lt; 戻る</button>
+          <h2 id="chat-user-name" style="margin: 0; flex-grow: 1; text-align: center; color: #ff5a5f;"></h2>
+          <div style="width: 60px;"></div> <!-- レイアウト調整用 -->
+        </div>
+        
+        <div id="chat-messages" class="chat-messages"></div>
+        
+        <div class="chat-input-area">
+          <input type="text" id="chat-input" placeholder="メッセージを入力...">
+          <button id="btn-send-message" class="btn-primary" style="width: 80px; margin: 0;">送信</button>
         </div>
       </section>
     </div>
-  </div>
-
-  <!-- ===============================
-       トーク（チャット）画面
-  ================================ -->
-  <div id="chat-screen" class="hidden">
-    <section>
-      <div class="chat-header">
-        <button id="btn-back-to-main" class="btn-secondary" style="width: auto; padding: 6px 12px; margin: 0;">&lt; 戻る</button>
-        <h2 id="chat-user-name" style="margin: 0; flex-grow: 1; text-align: center; color: #ff5a5f;"></h2>
-        <div style="width: 60px;"></div> <!-- レイアウト調整用 -->
-      </div>
-      
-      <div id="chat-messages" class="chat-messages"></div>
-      
-      <div class="chat-input-area">
-        <input type="text" id="chat-input" placeholder="メッセージを入力...">
-        <button id="btn-send-message" class="btn-primary" style="width: 80px; margin: 0;">送信</button>
-      </div>
-    </section>
   </div>
 
   <!-- ユーザー詳細モーダル -->
@@ -223,8 +256,6 @@
       document.getElementById('tab-matching').classList.remove('active');
       document.getElementById('view-dm').classList.remove('hidden');
       document.getElementById('view-matching').classList.add('hidden');
-      
-      // DMタブを開いた時に履歴一覧を読み込む
       await loadDMList();
     });
 
@@ -234,6 +265,7 @@
           if (session) {
             myUserId = session.user.id;
             document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('main-screen').classList.remove('hidden');
             document.getElementById('chat-screen').classList.add('hidden');
             try {
@@ -244,8 +276,7 @@
           } else {
             myUserId = null;
             document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('main-screen').classList.add('hidden');
-            document.getElementById('chat-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.add('hidden');
           }
         });
     }
@@ -352,7 +383,6 @@
       const container = document.getElementById('dm-list-container');
       container.innerHTML = '<div style="text-align:center; color:#888;">読み込み中...</div>';
 
-      // 自分に関するメッセージを全て取得
       const { data: messages, error } = await supabaseClient
         .from('messages')
         .select('sender_id, receiver_id')
@@ -363,7 +393,6 @@
         return;
       }
 
-      // トーク相手のユーザーIDを重複なく抽出
       const interactedUserIds = new Set();
       messages.forEach(msg => {
         if (msg.sender_id !== myUserId) interactedUserIds.add(msg.sender_id);
@@ -377,7 +406,6 @@
         return;
       }
 
-      // 抽出したユーザーIDのプロフィール情報を取得
       const { data: profiles, error: profileError } = await supabaseClient
         .from('profiles')
         .select('id, name, tags, bio')
@@ -393,7 +421,6 @@
         const item = document.createElement('div');
         item.className = 'dm-item';
         
-        // アイコン用に名前の最初の1文字を取得
         const initial = user.name ? user.name.charAt(0) : '?';
         const tagsPreview = (user.tags || []).slice(0, 3).map(t => `#${t}`).join(' ');
 
@@ -404,7 +431,6 @@
             <div class="dm-tags">${tagsPreview || 'タグなし'}</div>
           </div>
         `;
-        // タップしたらトーク画面へ
         item.onclick = () => startChat(user);
         container.appendChild(item);
       });
@@ -416,7 +442,7 @@
     function startChat(user) {
       closeUserModal();
       currentChatUser = user;
-      document.getElementById('main-screen').classList.add('hidden');
+      document.getElementById('main-screen').classList.add('hidden'); // スマホ用(PCではCSSで無効化される)
       document.getElementById('chat-screen').classList.remove('hidden');
       document.getElementById('chat-user-name').textContent = user.name;
       
@@ -431,7 +457,6 @@
       document.getElementById('chat-screen').classList.add('hidden');
       document.getElementById('main-screen').classList.remove('hidden');
       
-      // DMタブが開いている場合は一覧を更新しておく
       if(document.getElementById('tab-dm').classList.contains('active')) {
           loadDMList();
       }
