@@ -12,8 +12,8 @@
     p.subtitle { color: #666; font-size: 0.9rem; margin-top: 0; }
     section { background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     h2 { font-size: 1.2rem; margin-top: 0; color: #444; margin-bottom: 15px;}
-    input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; }
+    input[type="text"], input[type="password"], input[type="email"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; transition: background-color 0.3s; }
     
     .btn-primary { background-color: #ff5a5f; color: white; }
     .btn-primary:hover { background-color: #e0484c; }
@@ -31,6 +31,41 @@
     .message { font-size: 0.9em; margin-top: 10px; text-align: center; font-weight: bold; }
     .success-text { color: #2e7d32; }
     .error-text { color: #d32f2f; }
+
+    /* --- 利用規約のスタイル --- */
+    .terms-box {
+      height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-bottom: 15px;
+      font-size: 0.8rem;
+      background: #fafafa;
+      text-align: left;
+      border-radius: 6px;
+      color: #555;
+      line-height: 1.6;
+    }
+    .terms-box h3 { font-size: 1rem; color: #333; margin: 0 0 10px 0; border-bottom: 2px solid #ff5a5f; padding-bottom: 5px; }
+    .terms-box h4 { font-size: 0.9rem; color: #444; margin: 15px 0 5px 0; }
+    .terms-box p { margin: 0 0 10px 0; }
+    
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #333;
+    }
+    .checkbox-label input[type="checkbox"] {
+      width: auto;
+      margin: 0 10px 0 0;
+      transform: scale(1.3);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -62,7 +97,85 @@
         <input type="email" id="signup-email" placeholder="メールアドレス">
         <input type="text" id="signup-username" placeholder="ユーザー名 (ログインに使用します)">
         <input type="password" id="signup-password" placeholder="パスワード (6文字以上)">
-        <button class="btn-primary" id="btn-signup">確認メールを送信する</button>
+        
+        <!-- 利用規約・プライバシーポリシー表示エリア -->
+        <div class="terms-box">
+          <h3>利用規約</h3>
+          <p>本規約はチャットサービス「tagook」（以下「本サービス」）の利用条件を定めるものです。ユーザーの皆様は、本規約に同意の上で本サービスをご利用ください。</p>
+          
+          <h4>第1条（適用および登録）</h4>
+          <p>1. 本規約は、ユーザーと当方との間の本サービスの利用に関わる一切の関係に適用されます。<br>
+          2. 利用希望者が当方の定める方法によって利用登録を完了した時点で、本規約に同意したものとみなします。<br>
+          3. 登録内容に変更が生じた場合、ユーザーは速やかに変更手続きを行うものとします。<br>
+          4. ユーザーは、本サービスの利用にあたりメールアドレスを提供することに同意するものとします。取得したメールアドレスの取り扱いについては、別途定める「プライバシーポリシー」に従います。</p>
+          
+          <h4>第2条（アカウント管理）</h4>
+          <p>1. ユーザーは、自己の責任においてアカウントおよびパスワードを厳重に管理するものとします。<br>
+          2. アカウントの譲渡、貸与、売買等は一切禁止します。<br>
+          3. 登録情報を用いて行われた行為は、すべてそのアカウントを保有するユーザー本人の行為とみなします。</p>
+          
+          <h4>第3条（禁止事項）</h4>
+          <p>ユーザーは、本サービスの利用にあたり、以下の行為を行ってはならないものとします。<br>
+          1. 法令または公序良俗に反する行為、または犯罪行為に関連する行為<br>
+          2. 他のユーザー、当方、または第三者の著作権、プライバシー権、名誉等の権利を侵害する行為<br>
+          3. 誹謗中傷、ハラスメント、差別的発言、不快感を与えるメッセージの送信<br>
+          4. 猥褻（わいせつ）な画像、テキスト等の投稿および送受信<br>
+          5. 商業目的の宣伝、スパムメッセージの無差別送信、勧誘行為、詐欺行為、なりすまし行為、および他のユーザーの個人情報を無断で収集する行為<br>
+          6. サーバーやネットワークへ過度な負荷をかける行為、および不正アクセス行為<br>
+          7. その他、当方が不適切と判断する行為</p>
+
+          <h4>第4条（利用制限および登録抹消）</h4>
+          <p>当方は、ユーザーが以下のいずれかに該当すると判断した場合、事前の通知なくサービス利用の制限、またはアカウントの削除を行うことができます。<br>
+          1. 本規約のいずれかの条項に違反した場合<br>
+          2. 登録事項に虚偽の事実があることが判明した場合<br>
+          3. 一定期間、本サービスの利用がない場合<br>
+          4. その他、当方が本サービスの利用を適当でないと判断した場合</p>
+
+          <h4>第5条（免責事項）</h4>
+          <p>当方は、本サービスに事実上または法律上の欠陥（安全性、信頼性、正確性、有効性、特定目的への適合性等）がないことを保証するものではありません。<br>
+          1. ユーザー間、またはユーザーと第三者との間で生じたトラブルや損害について、当方は一切の責任を負いません。<br>
+          2. 当方は、本サービスの変更、中断、終了によって生じた損害について、一切の責任を負いません。</p>
+
+          <h4>第6条（サービス内容の変更・終了）</h4>
+          <p>当方は、ユーザーへの事前の通知なく、本サービスの内容を変更し、または提供を中止・終了することができるものとします。</p>
+
+          <h4>第7条（利用規約の変更）</h4>
+          <p>当方は、必要と判断した場合には、ユーザーに通知することなくいつでも本規約を変更できるものとします。変更後の利用規約は、本サービス上に掲示された時点から効力を生じるものとします。</p>
+
+          <h4>第8条（準拠法・裁判管轄）</h4>
+          <p>本規約の解釈にあたっては、日本法を準拠法とします。<br>
+          本サービスに関して紛争が生じた場合、当方の所在地を管轄する裁判所を専属的合意管轄とします。</p>
+
+          <p>附則<br>2026年8月17日 制定・施行</p>
+
+          <h3 style="margin-top: 25px;">プライバシーポリシー</h3>
+          <h4>1. 取得する個人情報</h4>
+          <p>本サービスでは、アカウント登録および本人確認のため、メールアドレスのみを取得します。クレジットカード情報や氏名、住所等の情報は一切収集いたしません。</p>
+          
+          <h4>2. 利用目的</h4>
+          <p>取得したメールアドレスは、以下の目的のためにのみ利用します。<br>
+          ・アカウントの作成、ログイン時の本人確認および認証<br>
+          ・パスワード再設定等、サービス運営上必要な重要なお知らせの送信<br>
+          ・ユーザーからの問い合わせに対する回答およびサポート</p>
+          
+          <h4>3. 個人情報の管理</h4>
+          <p>当方は、取得したメールアドレスの漏洩、滅失、改ざんを防ぐため、適切なセキュリティ対策を講じて厳重に管理します。</p>
+          
+          <h4>4. 第三者への提供</h4>
+          <p>当方は、以下の場合を除き、取得したメールアドレスを第三者に提供・開示することはありません。<br>
+          ・ユーザーの同意がある場合<br>
+          ・法令に基づき開示を求められた場合</p>
+          
+          <h4>5. 個人情報の削除</h4>
+          <p>ユーザーが退会した場合、またはアカウントが削除された場合、保持していたメールアドレスは速やかにデータベースより消去します。</p>
+        </div>
+
+        <label class="checkbox-label">
+          <input type="checkbox" id="signup-agree">
+          利用規約とプライバシーポリシーに同意する
+        </label>
+
+        <button class="btn-primary" id="btn-signup">同意して確認メールを送信する</button>
       </div>
 
       <div id="auth-message" class="message"></div>
@@ -96,9 +209,7 @@
        JavaScript
   ================================ -->
   <script>
-    // ★★★ 重要：ここをあなたのSupabaseのものに書き換えてください ★★★
-    // URLは必ず "https://" から始まる必要があります。
-    // （今はエラー回避のための仮のURLを入れています）
+    // ★★★ 重要：ここをご自身のSupabase情報に書き換えてください ★★★
     const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
     const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
     
@@ -106,7 +217,6 @@
 
     try {
         if (window.supabase) {
-            // ここでURLの形式が正しいかチェックされます
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         } else {
             console.error("Supabaseライブラリが読み込まれていません。");
@@ -164,6 +274,14 @@
     // --- 新規登録 (確認メール送信) ---
     // ==============================================
     document.getElementById('btn-signup').addEventListener('click', async () => {
+      
+      // ★まずは規約に同意しているかチェック
+      const isAgreed = document.getElementById('signup-agree').checked;
+      if (!isAgreed) {
+        showMessage('利用規約とプライバシーポリシーに同意してください。', true);
+        return;
+      }
+
       showMessage('処理中...', false);
 
       if (!supabaseClient) {
@@ -171,7 +289,6 @@
         return;
       }
 
-      // ご自身のURLに書き換えられていない場合の警告
       if (SUPABASE_URL.includes('YOUR_PROJECT_ID')) {
         showMessage('【設定エラー】コード内の SUPABASE_URL と SUPABASE_ANON_KEY をご自身のものに書き換えてください。', true);
         return;
@@ -187,7 +304,6 @@
       }
 
       try {
-        // ユーザー名重複チェック
         const { data: existingUser, error: checkError } = await supabaseClient
           .from('profiles')
           .select('name')
@@ -196,7 +312,6 @@
 
         if (checkError) {
           showMessage('通信エラー: データベースの確認に失敗しました。URLとキーが正しいか確認してください。', true);
-          console.error(checkError);
           return;
         }
 
@@ -229,13 +344,8 @@
     document.getElementById('btn-login').addEventListener('click', async () => {
       showMessage('ログイン中...', false);
 
-      if (!supabaseClient) {
-        showMessage('システムエラー: Supabaseクライアントが作成されていません。', true);
-        return;
-      }
-
-      if (SUPABASE_URL.includes('YOUR_PROJECT_ID')) {
-        showMessage('【設定エラー】コード内の SUPABASE_URL と SUPABASE_ANON_KEY をご自身のものに書き換えてください。', true);
+      if (!supabaseClient || SUPABASE_URL.includes('YOUR_PROJECT_ID')) {
+        showMessage('システムエラー: コード内の URL と キー を設定してください。', true);
         return;
       }
 
