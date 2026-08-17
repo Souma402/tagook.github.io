@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tagook（タグック）</title>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; color: #333; }
+    header { text-align: center; margin-bottom: 30px; }
+    h1 { color: #ff5a5f; font-size: 2.2rem; margin-bottom: 5px; }
+    p.subtitle { color: #666; font-size: 0.9rem; margin-top: 0; }
+    section { background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    h2 { font-size: 1.2rem; margin-top: 0; color: #444; margin-bottom: 15px;}
+    input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; }
+    
+    .btn-primary { background-color: #ff5a5f; color: white; }
+    .btn-primary:hover { background-color: #e0484c; }
+    .btn-secondary { background-color: #eee; color: #333; }
+    .btn-secondary:hover { background-color: #ddd; }
+    .btn-logout { background-color: transparent; color: #888; border: 1px solid #ccc; padding: 8px; font-size: 0.8rem;}
+
+    .card { border-bottom: 1px solid #eee; padding: 12px 0; }
+    .tag { background: #ffeae8; color: #ff5a5f; padding: 4px 8px; border-radius: 12px; font-size: 0.85em; margin-right: 5px; display: inline-block; margin-top: 5px; }
+    
+    /* 画面切り替え用のクラス */
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Tagook</h1>
+    <p class="subtitle">タグでつながる、偶然の出会い。</p>
+  </header>
+
+  <!-- ===============================
+       ログイン・新規登録画面
+  ================================ -->
+  <div id="auth-screen">
+    <section>
+      <h2>ログイン / アカウント作成</h2>
+      <input type="email" id="email" placeholder="メールアドレス">
+      <input type="password" id="password" placeholder="パスワード (6文字以上)">
+      <button class="btn-primary" onclick="handleLogin()">ログイン</button>
+      <button class="btn-secondary" onclick="handleSignUp()">新規登録</button>
+      <div id="auth-message" style="color: red; font-size: 0.9em; margin-top: 10px; text-align: center;"></div>
+    </section>
+  </div>
+
+  <!-- ===============================
+       メイン画面 (ログイン後に表示)
+  ================================ -->
+  <div id="main-screen" class="hidden">
+    <div style="text-align: right; margin-bottom: 10px;">
+      <button class="btn-logout" style="width: auto;" onclick="handleLogout()">ログアウト</button>
+    </div>
+
+    <!-- 1. プロフィール設定 -->
+    <section>
+      <h2>マイプロフィール設定</h2>
+      <input type="text" id="name" placeholder="ニックネーム">
+      <input type="text" id="tags" placeholder="タグ（カンマ区切り: 映画, カフェ）">
+      <button class="btn-primary" onclick="updateProfile()">保存する</button>
+    </section>
+
+    <!-- 2. タグ検索 -->
+    <section>
+      <h2>タグでさがす</h2>
+      <input type="text" id="searchTag" placeholder="検索したいタグ（例: 映画）">
+      <button class="btn-primary" onclick="searchProfiles()">シャッフル検索</button>
+
+      <div id="results" style="margin-top: 15px;"></div>
+    </section>
+  </div>
+
+  <!-- ===============================
+       JavaScript の処理
+  ================================ -->
+  <script>
+    // Supabaseの初期化（★ご自身のキーに変更してください）
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 画面要素の取得
+    const authScreen = document.getElementById('auth-screen');
+    const mainScreen = document.getElementById('main-screen');
+    const authMessage = document.getElementById('auth-message');
+
+    // -------------------------
+    // 認証状態の監視 (ログインしたらメイン画面へ、ログアウトしたらログイン画面へ)
+    // -------------------------
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        authScreen.classList.add('hidden');
+        mainScreen.classList.remove('hidden');
+      } else {
+        authScreen.classList.remove('hidden');
+        mainScreen.classList.add('hidden');
+      }
+    });
+
+    // -------------------------
+    // 新規登録
+    // -------------------------
+    async function handleSignUp() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      authMessage.textContent = "処理中...";
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      
+      if (error) {
+        authMessage.textContent = "登録エラー: " + error.message;
+      } else {
+        authMessage.textContent = "登録成功しました！";
+      }
+    }
+
+    // -------------------------
+    // ログイン
+    // -------------------------
+    async function handleLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      authMessage.textContent = "処理中...";
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        authMessage.textContent = "ログインエラー: " + error.message;
+      } else {
+        authMessage.textContent = ""; // 成功時はonAuthStateChangeが走る
+      }
+    }
+
+    // -------------------------
+    // ログアウト
+    // -------------------------
+    async function handleLogout() {
+      await supabase.auth.signOut();
+    }
+
+    // -------------------------
+    // プロフィール保存 (Upsert)
+    // -------------------------
+    async function updateProfile() {
+      const name = document.getElementById('name').value.trim();
+      const tagsInput = document.getElementById('tags').value.trim();
+
+      if (!name || !tagsInput) {
+        alert('名前とタグを入力してください');
+        return;
+      }
+
+      // 現在ログインしているユーザー情報を取得
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+      // upsert: 新規なら追加、既存なら更新
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ id: user.id, name: name, tags: tags });
+
+      if (error) {
+        alert('保存エラー: ' + error.message);
+      } else {
+        alert('プロフィールを保存しました！');
+      }
+    }
+
+    // -------------------------
+    // タグ検索
+    // -------------------------
+    async function searchProfiles() {
+      const searchTag = document.getElementById('searchTag').value.trim();
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '探しています...';
+
+      if (!searchTag) {
+        resultsDiv.innerHTML = 'タグを入力してください。';
+        return;
+      }
+
+      const { data, error } = await supabase
+        .rpc('get_random_profiles_by_tag', { search_tag: searchTag });
+
+      if (error) {
+        resultsDiv.innerHTML = 'エラー: ' + error.message;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        resultsDiv.innerHTML = '該当するユーザーが見つかりませんでした。';
+        return;
+      }
+
+      resultsDiv.innerHTML = '';
+      data.forEach(user => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const tagsHtml = user.tags.map(t => `<span class="tag">#${t}</span>`).join(' ');
+        card.innerHTML = `
+          <strong>${user.name}</strong>
+          <div>${tagsHtml}</div>
+        `;
+        resultsDiv.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
