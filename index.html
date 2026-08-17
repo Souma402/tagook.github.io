@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tagook（タグック）</title>
-  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; color: #333; }
@@ -18,15 +17,20 @@
     
     .btn-primary { background-color: #ff5a5f; color: white; }
     .btn-primary:hover { background-color: #e0484c; }
-    .btn-secondary { background-color: #eee; color: #333; }
-    .btn-secondary:hover { background-color: #ddd; }
+    .btn-secondary { background-color: transparent; color: #ff5a5f; border: 1px solid #ff5a5f; }
+    .btn-secondary:hover { background-color: #fff0f0; }
     .btn-logout { background-color: transparent; color: #888; border: 1px solid #ccc; padding: 8px; font-size: 0.8rem;}
 
     .card { border-bottom: 1px solid #eee; padding: 12px 0; }
     .tag { background: #ffeae8; color: #ff5a5f; padding: 4px 8px; border-radius: 12px; font-size: 0.85em; margin-right: 5px; display: inline-block; margin-top: 5px; }
     
-    /* 画面切り替え用のクラス */
-    .hidden { display: none; }
+    .hidden { display: none !important; }
+    .auth-tabs { display: flex; margin-bottom: 15px; }
+    .auth-tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; border-bottom: 2px solid #ddd; color: #888; font-weight: bold; }
+    .auth-tab.active { border-bottom-color: #ff5a5f; color: #ff5a5f; }
+    .message { font-size: 0.9em; margin-top: 10px; text-align: center; font-weight: bold; }
+    .success-text { color: #2e7d32; }
+    .error-text { color: #d32f2f; }
   </style>
 </head>
 <body>
@@ -37,16 +41,31 @@
   </header>
 
   <!-- ===============================
-       ログイン・新規登録画面
+       認証画面 (ログイン / 新規登録)
   ================================ -->
   <div id="auth-screen">
     <section>
-      <h2>ログイン / アカウント作成</h2>
-      <input type="email" id="email" placeholder="メールアドレス">
-      <input type="password" id="password" placeholder="パスワード (6文字以上)">
-      <button class="btn-primary" onclick="handleLogin()">ログイン</button>
-      <button class="btn-secondary" onclick="handleSignUp()">新規登録</button>
-      <div id="auth-message" style="color: red; font-size: 0.9em; margin-top: 10px; text-align: center;"></div>
+      <div class="auth-tabs">
+        <div id="tab-login" class="auth-tab active">ログイン</div>
+        <div id="tab-signup" class="auth-tab">新規登録</div>
+      </div>
+
+      <!-- ログインフォーム -->
+      <div id="form-login">
+        <input type="text" id="login-username" placeholder="ユーザー名">
+        <input type="password" id="login-password" placeholder="パスワード">
+        <button class="btn-primary" id="btn-login">ログイン</button>
+      </div>
+
+      <!-- 新規登録フォーム -->
+      <div id="form-signup" class="hidden">
+        <input type="email" id="signup-email" placeholder="メールアドレス">
+        <input type="text" id="signup-username" placeholder="ユーザー名 (ログインに使用します)">
+        <input type="password" id="signup-password" placeholder="パスワード (6文字以上)">
+        <button class="btn-primary" id="btn-signup">確認メールを送信する</button>
+      </div>
+
+      <div id="auth-message" class="message"></div>
     </section>
   </div>
 
@@ -54,132 +73,243 @@
        メイン画面 (ログイン後に表示)
   ================================ -->
   <div id="main-screen" class="hidden">
-    <div style="text-align: right; margin-bottom: 10px;">
-      <button class="btn-logout" style="width: auto;" onclick="handleLogout()">ログアウト</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <span id="welcome-message" style="font-weight: bold; color: #444;"></span>
+      <button class="btn-logout" style="width: auto; margin: 0;" id="btn-logout">ログアウト</button>
     </div>
 
-    <!-- 1. プロフィール設定 -->
     <section>
-      <h2>マイプロフィール設定</h2>
-      <input type="text" id="name" placeholder="ニックネーム">
-      <input type="text" id="tags" placeholder="タグ（カンマ区切り: 映画, カフェ）">
-      <button class="btn-primary" onclick="updateProfile()">保存する</button>
+      <h2>マイタグを設定する</h2>
+      <input type="text" id="tags" placeholder="例: 映画, カフェ巡り, Python">
+      <button class="btn-secondary" id="btn-update-tags">タグを保存する</button>
     </section>
 
-    <!-- 2. タグ検索 -->
     <section>
       <h2>タグでさがす</h2>
       <input type="text" id="searchTag" placeholder="検索したいタグ（例: 映画）">
-      <button class="btn-primary" onclick="searchProfiles()">シャッフル検索</button>
-
+      <button class="btn-primary" id="btn-search">シャッフル検索</button>
       <div id="results" style="margin-top: 15px;"></div>
     </section>
   </div>
 
   <!-- ===============================
-       JavaScript の処理
+       JavaScript
   ================================ -->
   <script>
-    // Supabaseの初期化（★ご自身のキーに変更してください）
-    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    // ★★★ 重要：ここをあなたのSupabaseのものに書き換えてください ★★★
+    // URLは必ず "https://" から始まる必要があります。
+    // （今はエラー回避のための仮のURLを入れています）
+    const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
     const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let supabaseClient = null;
 
-    // 画面要素の取得
-    const authScreen = document.getElementById('auth-screen');
-    const mainScreen = document.getElementById('main-screen');
+    try {
+        if (window.supabase) {
+            // ここでURLの形式が正しいかチェックされます
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } else {
+            console.error("Supabaseライブラリが読み込まれていません。");
+        }
+    } catch (error) {
+        console.error("Supabaseの初期化エラー:", error);
+    }
+
     const authMessage = document.getElementById('auth-message');
 
-    // -------------------------
-    // 認証状態の監視 (ログインしたらメイン画面へ、ログアウトしたらログイン画面へ)
-    // -------------------------
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        authScreen.classList.add('hidden');
-        mainScreen.classList.remove('hidden');
-      } else {
-        authScreen.classList.remove('hidden');
-        mainScreen.classList.add('hidden');
-      }
+    function showMessage(text, isError = false) {
+      authMessage.textContent = text;
+      authMessage.className = 'message ' + (isError ? 'error-text' : 'success-text');
+    }
+
+    // --- タブ切り替え処理 ---
+    document.getElementById('tab-login').addEventListener('click', () => {
+      document.getElementById('tab-login').classList.add('active');
+      document.getElementById('tab-signup').classList.remove('active');
+      document.getElementById('form-login').classList.remove('hidden');
+      document.getElementById('form-signup').classList.add('hidden');
+      showMessage('');
     });
 
-    // -------------------------
-    // 新規登録
-    // -------------------------
-    async function handleSignUp() {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
-      authMessage.textContent = "処理中...";
+    document.getElementById('tab-signup').addEventListener('click', () => {
+      document.getElementById('tab-signup').classList.add('active');
+      document.getElementById('tab-login').classList.remove('active');
+      document.getElementById('form-signup').classList.remove('hidden');
+      document.getElementById('form-login').classList.add('hidden');
+      showMessage('');
+    });
 
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      
-      if (error) {
-        authMessage.textContent = "登録エラー: " + error.message;
-      } else {
-        authMessage.textContent = "登録成功しました！";
-      }
+    // --- 認証状態の監視 ---
+    if(supabaseClient) {
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+          if (session) {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-screen').classList.remove('hidden');
+            try {
+              const { data } = await supabaseClient.from('profiles').select('name').eq('id', session.user.id).single();
+              if (data) {
+                document.getElementById('welcome-message').textContent = `ようこそ、${data.name}さん！`;
+              }
+            } catch(e) {
+              console.error(e);
+            }
+          } else {
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('main-screen').classList.add('hidden');
+          }
+        });
     }
 
-    // -------------------------
-    // ログイン
-    // -------------------------
-    async function handleLogin() {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
-      authMessage.textContent = "処理中...";
+    // ==============================================
+    // --- 新規登録 (確認メール送信) ---
+    // ==============================================
+    document.getElementById('btn-signup').addEventListener('click', async () => {
+      showMessage('処理中...', false);
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      
-      if (error) {
-        authMessage.textContent = "ログインエラー: " + error.message;
-      } else {
-        authMessage.textContent = ""; // 成功時はonAuthStateChangeが走る
-      }
-    }
-
-    // -------------------------
-    // ログアウト
-    // -------------------------
-    async function handleLogout() {
-      await supabase.auth.signOut();
-    }
-
-    // -------------------------
-    // プロフィール保存 (Upsert)
-    // -------------------------
-    async function updateProfile() {
-      const name = document.getElementById('name').value.trim();
-      const tagsInput = document.getElementById('tags').value.trim();
-
-      if (!name || !tagsInput) {
-        alert('名前とタグを入力してください');
+      if (!supabaseClient) {
+        showMessage('システムエラー: Supabaseクライアントが作成されていません。', true);
         return;
       }
 
-      // 現在ログインしているユーザー情報を取得
-      const { data: { user } } = await supabase.auth.getUser();
+      // ご自身のURLに書き換えられていない場合の警告
+      if (SUPABASE_URL.includes('YOUR_PROJECT_ID')) {
+        showMessage('【設定エラー】コード内の SUPABASE_URL と SUPABASE_ANON_KEY をご自身のものに書き換えてください。', true);
+        return;
+      }
+
+      const email = document.getElementById('signup-email').value.trim();
+      const username = document.getElementById('signup-username').value.trim();
+      const password = document.getElementById('signup-password').value;
+
+      if (!email || !username || !password) {
+        showMessage('すべての項目を入力してください。', true);
+        return;
+      }
+
+      try {
+        // ユーザー名重複チェック
+        const { data: existingUser, error: checkError } = await supabaseClient
+          .from('profiles')
+          .select('name')
+          .eq('name', username)
+          .maybeSingle();
+
+        if (checkError) {
+          showMessage('通信エラー: データベースの確認に失敗しました。URLとキーが正しいか確認してください。', true);
+          console.error(checkError);
+          return;
+        }
+
+        if (existingUser) {
+          showMessage('このユーザー名は既に使われています。別の名前を指定してください。', true);
+          return;
+        }
+
+        showMessage('送信中...', false);
+
+        const { data, error } = await supabaseClient.auth.signUp({
+          email: email,
+          password: password,
+          options: {
+            data: { name: username } 
+          }
+        });
+        
+        if (error) {
+          showMessage('エラー: ' + error.message, true);
+        } else {
+          showMessage('確認メールを送信しました！メール内のリンクをクリックして登録を完了してください。', false);
+        }
+      } catch (err) {
+        showMessage('予期せぬエラーが発生しました: ' + err.message, true);
+      }
+    });
+
+    // --- ログイン ---
+    document.getElementById('btn-login').addEventListener('click', async () => {
+      showMessage('ログイン中...', false);
+
+      if (!supabaseClient) {
+        showMessage('システムエラー: Supabaseクライアントが作成されていません。', true);
+        return;
+      }
+
+      if (SUPABASE_URL.includes('YOUR_PROJECT_ID')) {
+        showMessage('【設定エラー】コード内の SUPABASE_URL と SUPABASE_ANON_KEY をご自身のものに書き換えてください。', true);
+        return;
+      }
+
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (!username || !password) {
+        showMessage('ユーザー名とパスワードを入力してください。', true);
+        return;
+      }
+
+      try {
+        const { data: profile, error: profileError } = await supabaseClient
+          .from('profiles')
+          .select('email')
+          .eq('name', username)
+          .maybeSingle();
+
+        if (profileError || !profile) {
+          showMessage('ユーザー名が見つからないか、パスワードが間違っています。', true);
+          return;
+        }
+
+        const { error } = await supabaseClient.auth.signInWithPassword({
+          email: profile.email,
+          password: password
+        });
+        
+        if (error) {
+          showMessage('ユーザー名が見つからないか、パスワードが間違っています。', true);
+        } else {
+          authMessage.textContent = '';
+        }
+      } catch (err) {
+        showMessage('エラーが発生しました: ' + err.message, true);
+      }
+    });
+
+    // --- ログアウト ---
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+       if(!supabaseClient) return;
+      await supabaseClient.auth.signOut();
+    });
+
+    // --- タグの保存処理 ---
+    document.getElementById('btn-update-tags').addEventListener('click', async () => {
+       if(!supabaseClient) {
+           alert("Supabaseに接続されていません。");
+           return;
+       }
+
+      const tagsInput = document.getElementById('tags').value.trim();
+      const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) return;
 
       const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0);
-
-      // upsert: 新規なら追加、既存なら更新
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({ id: user.id, name: name, tags: tags });
+      const { error } = await supabaseClient.from('profiles').update({ tags: tags }).eq('id', user.id);
 
       if (error) {
         alert('保存エラー: ' + error.message);
       } else {
-        alert('プロフィールを保存しました！');
+        alert('タグを保存しました！');
       }
-    }
+    });
 
-    // -------------------------
-    // タグ検索
-    // -------------------------
-    async function searchProfiles() {
-      const searchTag = document.getElementById('searchTag').value.trim();
+    // --- タグ検索 ---
+    document.getElementById('btn-search').addEventListener('click', async () => {
       const resultsDiv = document.getElementById('results');
+      if(!supabaseClient) {
+          resultsDiv.innerHTML = '<span style="color:red;">システムエラー: Supabaseに接続されていません。</span>';
+          return;
+      }
+
+      const searchTag = document.getElementById('searchTag').value.trim();
       resultsDiv.innerHTML = '探しています...';
 
       if (!searchTag) {
@@ -187,8 +317,7 @@
         return;
       }
 
-      const { data, error } = await supabase
-        .rpc('get_random_profiles_by_tag', { search_tag: searchTag });
+      const { data, error } = await supabaseClient.rpc('get_random_profiles_by_tag', { search_tag: searchTag });
 
       if (error) {
         resultsDiv.innerHTML = 'エラー: ' + error.message;
@@ -211,7 +340,7 @@
         `;
         resultsDiv.appendChild(card);
       });
-    }
+    });
   </script>
 </body>
 </html>
