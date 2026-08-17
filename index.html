@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tagook（タグック</title>
+  <title>Tagook（タグック）</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; color: #333; }
@@ -109,6 +109,7 @@
           3. 登録内容に変更が生じた場合、ユーザーは速やかに変更手続きを行うものとします。<br>
           4. ユーザーは、本サービスの利用にあたりメールアドレスを提供することに同意するものとします。取得したメールアドレスの取り扱いについては、別途定める「プライバシーポリシー」に従います。</p>
           
+          <!-- (中略せずにそのまま記載) -->
           <h4>第2条（アカウント管理）</h4>
           <p>1. ユーザーは、自己の責任においてアカウントおよびパスワードを厳重に管理するものとします。<br>
           2. アカウントの譲渡、貸与、売買等は一切禁止します。<br>
@@ -210,8 +211,8 @@
   ================================ -->
   <script>
     // ★★★ 重要：ここをご自身のSupabase情報に書き換えてください ★★★
-    const SUPABASE_URL = 'https://ijcwggeaewnbixamjkrr.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqY3dnZ2VhZXduYml4YW1qa3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MDg4MDEsImV4cCI6MjEwMjQ4NDgwMX0.YLoggFE8b87rPqeFUKGiV6185OxdKt2Ja9F-OEEteJs';
+    const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
     
     let supabaseClient = null;
 
@@ -275,7 +276,6 @@
     // ==============================================
     document.getElementById('btn-signup').addEventListener('click', async () => {
       
-      // ★まずは規約に同意しているかチェック
       const isAgreed = document.getElementById('signup-agree').checked;
       if (!isAgreed) {
         showMessage('利用規約とプライバシーポリシーに同意してください。', true);
@@ -322,11 +322,13 @@
 
         showMessage('送信中...', false);
 
+        // ★ 修正箇所: emailRedirectTo を追加して、現在のページのURLに戻ってくるようにしました
         const { data, error } = await supabaseClient.auth.signUp({
           email: email,
           password: password,
           options: {
-            data: { name: username } 
+            data: { name: username },
+            emailRedirectTo: window.location.href // ← これにより今のURLに戻るよう指示します
           }
         });
         
