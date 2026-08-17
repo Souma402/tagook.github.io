@@ -2,18 +2,42 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Tagook（タグック）</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 10px 15px; background-color: #f9f9f9; color: #333; transition: max-width 0.3s;}
+    /* ★ 画面全体の高さを固定し、はみ出しを防止（スクロールは各エリア内で行う） */
+    html, body {
+      height: 100%;
+      height: 100dvh; /* 最新スマホのバー対策 */
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #f9f9f9;
+    }
     
-    /* ★ ヘッダーを小さくコンパクトに変更 */
-    header { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-bottom: 10px; padding: 5px 0; }
-    h1 { color: #ff5a5f; font-size: 1.1rem; margin: 0; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; }
+    
+    /* 画面全体を包むラッパー */
+    .app-wrapper {
+      max-width: 600px;
+      margin: 0 auto;
+      height: 100%;
+      padding: 10px 15px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      transition: max-width 0.3s;
+    }
+
+    /* ★ ヘッダーのスタイル */
+    header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; padding: 5px 0; flex-shrink: 0; }
+    header.center { justify-content: center; }
+    header.left { justify-content: flex-start; }
+    h1 { color: #ff5a5f; font-size: 1.2rem; margin: 0; }
     p.subtitle { color: #666; font-size: 0.75rem; margin: 0; }
 
-    section { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    section { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-shrink: 0; }
     h2 { font-size: 1.05rem; margin-top: 0; color: #444; margin-bottom: 10px;}
     
     /* 入力時の自動ズーム防止のため font-size: 16px */
@@ -34,7 +58,7 @@
     .hidden { display: none !important; }
     
     /* タブスタイル */
-    .auth-tabs, .main-tabs { display: flex; margin-bottom: 10px; }
+    .auth-tabs, .main-tabs { display: flex; margin-bottom: 10px; flex-shrink: 0; }
     .auth-tab, .main-tab { flex: 1; text-align: center; padding: 8px; cursor: pointer; border-bottom: 2px solid #ddd; color: #888; font-weight: bold; font-size: 0.9rem; transition: all 0.2s;}
     .auth-tab.active, .main-tab.active { border-bottom-color: #ff5a5f; color: #ff5a5f; }
     
@@ -49,137 +73,165 @@
     #current-tags-container { margin-bottom: 10px; padding: 10px; background: #fafafa; border-radius: 8px; border: 1px solid #eee; }
     .my-tag { background: #ffeae8; color: #ff5a5f; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; margin-right: 4px; margin-top: 4px; display: inline-block; cursor: pointer; user-select: none; }
     
-    /* モーダルスタイル */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #fff; padding: 20px; border-radius: 12px; max-width: 450px; width: 85%; box-shadow: 0 4px 20px rgba(0,0,0,0.15); text-align: left; }
-    .modal-bio { margin-top: 10px; padding: 10px; background: #fafafa; border-radius: 8px; font-size: 0.9rem; color: #444; white-space: pre-wrap; word-break: break-word; min-height: 50px; border: 1px solid #eee; }
+    /* スクロール領域の共通スタイル (スクロールバーを細くする) */
+    .scroll-area { flex-grow: 1; overflow-y: auto; padding-right: 4px; }
+    .scroll-area::-webkit-scrollbar, .chat-messages::-webkit-scrollbar { width: 6px; }
+    .scroll-area::-webkit-scrollbar-track, .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb, .chat-messages::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
 
+    /* 各画面のレイアウト用 */
+    #auth-screen { height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
+    #app-container { height: 100%; width: 100%; display: flex; flex-direction: column; }
+    #main-screen { height: 100%; display: flex; flex-direction: column; }
+    
     /* トーク画面のスタイル */
-    .chat-header { display: flex; align-items: center; margin-bottom: 10px; }
-    .chat-messages { height: calc(100vh - 220px); min-height: 300px; max-height: 550px; overflow-y: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px; }
-    .chat-input-area { display: flex; gap: 8px; }
+    #chat-screen { height: 100%; display: flex; flex-direction: column; }
+    #chat-screen section { height: 100%; display: flex; flex-direction: column; margin-bottom: 0; box-sizing: border-box; }
+    .chat-header { display: flex; align-items: center; margin-bottom: 10px; flex-shrink: 0; }
+    .chat-messages { flex-grow: 1; overflow-y: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px; height: auto; min-height: 0; }
+    .chat-input-area { display: flex; gap: 8px; flex-shrink: 0; }
     .chat-input-area input { margin-bottom: 0; flex-grow: 1; }
-    .msg { padding: 8px 12px; border-radius: 16px; max-width: 75%; word-break: break-all; font-size: 0.9rem; line-height: 1.35; }
+    
+    .msg { padding: 8px 12px; border-radius: 16px; max-width: 75%; word-break: break-all; font-size: 0.9rem; line-height: 1.35; flex-shrink: 0; }
     .msg.mine { background-color: #ff5a5f; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
     .msg.theirs { background-color: #f1f1f1; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; }
 
     /* DMリストのスタイル */
     .dm-item { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid #eee; cursor: pointer; transition: background-color 0.2s; background: #fff; border-radius: 8px; margin-bottom: 6px; }
     .dm-item:hover { background-color: #fff8f8; }
-    .dm-icon { width: 36px; height: 36px; border-radius: 50%; background-color: #ff5a5f; color: white; display: flex; justify-content: center; align-items: center; font-weight: bold; margin-right: 12px; font-size: 1rem; }
+    .dm-icon { width: 36px; height: 36px; border-radius: 50%; background-color: #ff5a5f; color: white; display: flex; justify-content: center; align-items: center; font-weight: bold; margin-right: 12px; font-size: 1rem; flex-shrink: 0; }
     .dm-info { flex-grow: 1; }
     .dm-name { font-weight: bold; font-size: 0.95rem; color: #333; margin-bottom: 2px; }
     .dm-tags { font-size: 0.75rem; color: #888; }
 
+    /* モーダルスタイル */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; padding: 20px; border-radius: 12px; max-width: 450px; width: 85%; box-shadow: 0 4px 20px rgba(0,0,0,0.15); text-align: left; max-height: 90vh; overflow-y: auto; }
+    .modal-bio { margin-top: 10px; padding: 10px; background: #fafafa; border-radius: 8px; font-size: 0.9rem; color: #444; white-space: pre-wrap; word-break: break-word; min-height: 50px; border: 1px solid #eee; }
+
     /* PC向けレスポンシブデザイン */
     @media (min-width: 768px) {
-      body { max-width: 1000px; }
-      #app-container { display: flex; gap: 15px; align-items: flex-start; }
-      #main-screen { width: 380px; flex-shrink: 0; display: block !important; }
-      #chat-screen { flex-grow: 1; width: 100%; }
-      .chat-messages { height: 580px; }
+      .app-wrapper { max-width: 1000px; }
+      #app-container { flex-direction: row; gap: 15px; }
+      #main-screen { width: 380px; flex-shrink: 0; display: flex !important; border-right: 1px solid #eaeaea; padding-right: 15px; }
+      #chat-screen { flex-grow: 1; width: 100%; display: flex !important; }
       #btn-back-to-main { display: none !important; }
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>Tagook</h1>
-    <p class="subtitle">- タグでつながる</p>
-  </header>
+  <div class="app-wrapper">
+    <!-- 認証画面 -->
+    <div id="auth-screen">
+      <header class="center">
+        <h1>Tagook</h1>
+        <p class="subtitle">- タグでつながる</p>
+      </header>
 
-  <!-- 認証画面 -->
-  <div id="auth-screen">
-    <section>
-      <div class="auth-tabs">
-        <div id="tab-login" class="auth-tab active">ログイン</div>
-        <div id="tab-signup" class="auth-tab">新規登録</div>
-      </div>
-
-      <div id="form-login">
-        <input type="text" id="login-username" placeholder="ユーザー名">
-        <input type="password" id="login-password" placeholder="パスワード">
-        <button class="btn-primary" id="btn-login">ログイン</button>
-      </div>
-
-      <div id="form-signup" class="hidden">
-        <input type="text" id="signup-username" placeholder="ユーザー名">
-        <input type="password" id="signup-password" placeholder="パスワード (6文字以上)">
-        <div class="terms-box">
-          <p>利用規約（省略）</p>
+      <section>
+        <div class="auth-tabs">
+          <div id="tab-login" class="auth-tab active">ログイン</div>
+          <div id="tab-signup" class="auth-tab">新規登録</div>
         </div>
-        <label class="checkbox-label">
-          <input type="checkbox" id="signup-agree">
-          利用規約に同意する
-        </label>
-        <button class="btn-primary" id="btn-signup">アカウントを作成</button>
-      </div>
-      <div id="auth-message" class="message"></div>
-    </section>
-  </div>
 
-  <!-- ログイン後のコンテナ -->
-  <div id="app-container" class="hidden">
-    <div id="main-screen">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span id="welcome-message" style="font-weight: bold; color: #444; font-size: 0.85rem;"></span>
-        <button class="btn-logout" style="width: auto; margin: 0;" id="btn-logout">ログアウト</button>
-      </div>
+        <div id="form-login">
+          <input type="text" id="login-username" placeholder="ユーザー名">
+          <input type="password" id="login-password" placeholder="パスワード">
+          <button class="btn-primary" id="btn-login">ログイン</button>
+        </div>
 
-      <div class="main-tabs">
-        <div id="tab-matching" class="main-tab active">マッチング</div>
-        <div id="tab-dm" class="main-tab">DM</div>
-      </div>
-
-      <!-- マッチング画面 -->
-      <div id="view-matching">
-        <section>
-          <h2>タグでさがす</h2>
-          <input type="text" id="searchTag" placeholder="検索したいタグ（例: 映画）">
-          <button class="btn-primary" id="btn-search">シャッフル検索</button>
-          <div id="results" style="margin-top: 10px;"></div>
-        </section>
-
-        <section>
-          <h2>マイタグ</h2>
-          <div id="current-tags-container"></div>
-          <input type="text" id="tags" placeholder="追加したいタグ（例: カフェ）">
-          <button class="btn-secondary" id="btn-update-tags">タグを追加する</button>
-        </section>
-
-        <section>
-          <h2>私について (プロフィール)</h2>
-          <textarea id="my-bio" placeholder="趣味や自己紹介などを入力してください" rows="2"></textarea>
-          <button class="btn-secondary" id="btn-update-bio">「私について」を保存する</button>
-        </section>
-      </div>
-
-      <!-- DM画面 -->
-      <div id="view-dm" class="hidden">
-        <section style="padding: 5px; background: transparent; border: none; box-shadow: none;">
-          <h2 style="padding-left: 5px;">メッセージ一覧</h2>
-          <div id="dm-list-container"></div>
-        </section>
-      </div>
+        <div id="form-signup" class="hidden">
+          <input type="text" id="signup-username" placeholder="ユーザー名">
+          <input type="password" id="signup-password" placeholder="パスワード (6文字以上)">
+          <div class="terms-box">
+            <p>利用規約（省略）</p>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="signup-agree">
+            利用規約に同意する
+          </label>
+          <button class="btn-primary" id="btn-signup">アカウントを作成</button>
+        </div>
+        <div id="auth-message" class="message"></div>
+      </section>
     </div>
 
-    <!-- チャット画面 -->
-    <div id="chat-screen" class="hidden">
-      <section>
-        <div class="chat-header">
-          <button id="btn-back-to-main" class="btn-secondary" style="width: auto; padding: 4px 10px; margin: 0; font-size: 0.85rem;">&lt; 戻る</button>
-          <h2 id="chat-user-name" style="margin: 0; flex-grow: 1; text-align: center; color: #ff5a5f; font-size: 1.1rem;"></h2>
-          <div style="width: 50px;"></div>
+    <!-- ログイン後のコンテナ -->
+    <div id="app-container" class="hidden">
+      
+      <!-- メイン画面 (左側) -->
+      <div id="main-screen">
+        <header class="left">
+          <h1>Tagook</h1>
+          <p class="subtitle">- タグでつながる</p>
+        </header>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0;">
+          <span id="welcome-message" style="font-weight: bold; color: #444; font-size: 0.85rem;"></span>
+          <button class="btn-logout" style="width: auto; margin: 0;" id="btn-logout">ログアウト</button>
         </div>
-        
-        <div id="chat-messages" class="chat-messages"></div>
-        
-        <div class="chat-input-area">
-          <input type="text" id="chat-input" placeholder="メッセージを入力...">
-          <button id="btn-send-message" class="btn-primary" style="width: 70px; margin: 0;">送信</button>
+
+        <div class="main-tabs">
+          <div id="tab-matching" class="main-tab active">マッチング</div>
+          <div id="tab-dm" class="main-tab">DM</div>
         </div>
-      </section>
+
+        <!-- スクロール可能なエリア（マッチング＆DM一覧） -->
+        <div class="scroll-area">
+          <!-- マッチング画面 -->
+          <div id="view-matching">
+            <section>
+              <h2>タグでさがす</h2>
+              <input type="text" id="searchTag" placeholder="検索したいタグ（例: 映画）">
+              <button class="btn-primary" id="btn-search">シャッフル検索</button>
+              <div id="results" style="margin-top: 10px;"></div>
+            </section>
+
+            <section>
+              <h2>マイタグ</h2>
+              <div id="current-tags-container"></div>
+              <input type="text" id="tags" placeholder="追加したいタグ（例: カフェ）">
+              <button class="btn-secondary" id="btn-update-tags">タグを追加する</button>
+            </section>
+
+            <section>
+              <h2>私について (プロフィール)</h2>
+              <textarea id="my-bio" placeholder="趣味や自己紹介などを入力してください" rows="2"></textarea>
+              <button class="btn-secondary" id="btn-update-bio">保存する</button>
+            </section>
+          </div>
+
+          <!-- DM画面 -->
+          <div id="view-dm" class="hidden">
+            <section style="padding: 5px; background: transparent; border: none; box-shadow: none;">
+              <h2 style="padding-left: 5px;">メッセージ一覧</h2>
+              <div id="dm-list-container"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- チャット画面 (右側) -->
+      <div id="chat-screen" class="hidden">
+        <section>
+          <div class="chat-header">
+            <button id="btn-back-to-main" class="btn-secondary" style="width: auto; padding: 4px 10px; margin: 0; font-size: 0.85rem; margin-right: 10px;">&lt; 戻る</button>
+            <h2 id="chat-user-name" style="margin: 0; flex-grow: 1; text-align: center; color: #ff5a5f; font-size: 1.1rem;">(トーク相手を選択)</h2>
+            <div style="width: 50px;" id="chat-header-spacer"></div>
+          </div>
+          
+          <div id="chat-messages" class="chat-messages">
+             <div style="text-align:center; color:#aaa; margin-top:15px; font-size: 0.85rem;">左のリストから相手を選ぶと<br>トークを開始できます。</div>
+          </div>
+          
+          <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="メッセージを入力...">
+            <button id="btn-send-message" class="btn-primary" style="width: 70px; margin: 0;">送信</button>
+          </div>
+        </section>
+      </div>
+
     </div>
   </div>
 
@@ -240,7 +292,12 @@
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('main-screen').classList.remove('hidden');
-            document.getElementById('chat-screen').classList.add('hidden');
+            
+            // PCの場合は常に表示されるが、スマホ用にhiddenを付けておく
+            if (window.innerWidth < 768) {
+              document.getElementById('chat-screen').classList.add('hidden');
+            }
+            
             try {
               const { data } = await supabaseClient.from('profiles').select('name').eq('id', myUserId).single();
               if (data) document.getElementById('welcome-message').textContent = `ようこそ、${data.name}さん！`;
